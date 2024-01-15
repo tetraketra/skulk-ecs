@@ -23,7 +23,7 @@ else
 fi
 
 
-gcc $FILES -o ./bin/convolution $WARNS $LINKS $DEBUG $FSANS $CGENS -ftime-report \
+gcc $FILES -o ./bin/skulk $WARNS $LINKS $DEBUG $FSANS $CGENS -ftime-report \
     > tmp.txt 2>&1
 
 echo "\nReporting..."
@@ -46,5 +46,5 @@ cat tmp.txt \
 
 rm tmp.txt
 
-chmod a+x ./bin/convolution
-echo "\n\nExecute ./bin/convolution to start convolution."
+chmod a+x ./bin/skulk
+echo "\n\nExecute ./bin/skulk to start the example program."

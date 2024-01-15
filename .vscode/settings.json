@@ -23,6 +23,14 @@
         "locale": "c",
         "memory": "c",
         "random": "c",
-        "vector": "c"
+        "vector": "c",
+        "stdio.h": "c",
+        "skulk.h": "c",
+        "string.h": "c",
+        "cstdint": "c",
+        "__locale": "c",
+        "thread": "c",
+        "stdlib.h": "c",
+        "stdarg.h": "c"
     }
 }

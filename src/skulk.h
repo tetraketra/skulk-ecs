@@ -9,23 +9,34 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define uuid_t int64_t
+
+
+/*
+    This can be used to cast component arrays to check if there's a value.
+    The first entity id is 1, so `(skulk_id_cast_t*)(thing)->id` is only 0 
+    if there isn't a component there.
+*/
+typedef struct skulk_id_cast_t {
+    uuid_t id;
+} skulk_id_cast_t;
+
 
 /*
     Each world contains many components. Worlds are on the heap.
     - `void* components`, an array of one specific component type.
-    - `void (*const)(void*)`, a constructor function for that component.
-    - `void (*decst)(void*)`, a destructor function for that component.
+    - `void (*add_entity)(uuid_t, void*)`, a function which adds an entity.
+    - `void (*del_entity)(uuid_t)`, a function which removes an entity.
     - `size_t len`, the size of the world, which doubles at max capacity.
     - `size_t cnt`, the number of components in the world.
     - `size_t next_space`, the next free space in the world for insertion.
 */
 typedef struct skulk_world_t {
     void* components;
-    void (*constr)(void*);
-    void (*decstr)(void*);
     size_t len;
     size_t cnt;
     size_t next_space;
+    void (*pre_free)(void*);
 } skulk_world_t;
 
 
@@ -39,11 +50,15 @@ typedef struct skulk_universe_t {
     size_t len;
 } skulk_universe_t;
 
-
-extern void skulk_expand_universe(void);
-extern skulk_universe_t _universe;
-extern int64_t _uuid_counter;
-extern size_t __co_defcnt;
+extern void skulk_default_pre_free(void*);
+extern void* skulk_world_next_space(int world_number, size_t size_of_component);
+extern void skulk_add_entity_component(int world_number, void* component, size_t size_of_component);
+extern void skulk_world_init(int world_number, size_t size_of_component, void (*pre_free)(void*));
+extern uuid_t skulk_get_entity_id(void);
+extern void skulk_universe_expand(void);
+extern skulk_universe_t skulk_universe;
+extern uuid_t _uuid_counter;
+extern size_t __wo_defcnt;
 
 
 /*
@@ -56,43 +71,42 @@ extern size_t __co_defcnt;
     - `skulk_define_component(string, char* value; int len;)`
 */
 #define skulk_define_component(name, ...)                                  \
-typedef struct name { int64_t uuid; __VA_ARGS__ } name;                    \
+typedef struct name { uuid_t id; __VA_ARGS__ } name;                    \
 __attribute__((constructor)) static void name##__definitely_global(void) { \
-    __co_defcnt++; \
+    __wo_defcnt++; \
 }
 
 
-/*
-    Starts the component order definition process. When done, finalize with `*_end()`.
-    Call `skulk_component_order(component)` for each component between `*_start()` and `*_end()`.
-    Must be called in the global scope without an ending semicolon!  
-
-    Component orders defined here are accessible as the enum values `sco_##component_name`. 
+/* 
+    Starts the world order definition process. When done, finalize with `*_end()`. 
+    Call `skulk_world_order(component)` for each component between `*_start()` and `*_end()`. 
+    World orders defined here are accessible as the enum values `swo_##component_name`. 
+    Must be called in the global scope without an ending semicolon!   
 
     #### Macro Family:
     - `skulk_component_order_start()`
     - `skulk_component_order()`
     - `skulk_component_order_end()`
 */
-#define skulk_component_order_start() enum skulk_co {
+#define skulk_world_order_start() enum skulk_wo {
 
 
 /* 
-    Defines the order in which components are added to skulk's universe. 
+    Defines the order in which worlds are added to skulk's universe. 
     Call once for each component, but only between `*_start()` and `*_end()`.
     Must be called in the global scope without an ending semicolon!
 */ 
-#define skulk_component_order(component) sco_##component,
+#define skulk_world_order(component) swo_##component,
 
 
 /* 
-    Finalizes the skulk component order.
+    Finalizes the skulk world order.
     Must be called in global scope!
 */
-#define skulk_component_order_end() __sco_final, };                      \
+#define skulk_world_order_end() __swo_final };                      \
 __attribute__((constructor)) static void scoe__definitely_global(void) { \
-    for (int i = 0; i < __sco_final; i++) { skulk_expand_universe(); }   \
-    assert(__co_defcnt == __sco_final && "Must call skulk_component_order() once for each component."); \
+    for (int i = 0; i < __swo_final; i++) { skulk_universe_expand(); }   \
+    assert(__wo_defcnt == __swo_final && "Must call skulk_world_order() once for each component."); \
 }
 
 
