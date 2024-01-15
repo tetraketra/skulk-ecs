@@ -54,19 +54,20 @@ extern size_t __co_defcnt;
     #### Examples:
     - `skulk_define_component(number, int value; int base;)`
     - `skulk_define_component(string, char* value; int len;)`
-    
 */
-#define skulk_define_component(name, ...)                                      \
-    typedef struct name { int64_t uuid; __VA_ARGS__ } name;                    \
-    __attribute__((constructor)) static void name##__definitely_global(void) { \
-        __co_defcnt++; \
-    }; 
+#define skulk_define_component(name, ...)                                  \
+typedef struct name { int64_t uuid; __VA_ARGS__ } name;                    \
+__attribute__((constructor)) static void name##__definitely_global(void) { \
+    __co_defcnt++; \
+}
 
 
 /*
     Starts the component order definition process. When done, finalize with `*_end()`.
     Call `skulk_component_order(component)` for each component between `*_start()` and `*_end()`.
     Must be called in the global scope without an ending semicolon!  
+
+    Component orders defined here are accessible as the enum values `sco_##component_name`. 
 
     #### Macro Family:
     - `skulk_component_order_start()`
@@ -81,18 +82,18 @@ extern size_t __co_defcnt;
     Call once for each component, but only between `*_start()` and `*_end()`.
     Must be called in the global scope without an ending semicolon!
 */ 
-#define skulk_component_order(component) sco_##component, 
+#define skulk_component_order(component) sco_##component,
 
 
 /* 
     Finalizes the skulk component order.
     Must be called in global scope!
 */
-#define skulk_component_order_end() __skulk_co_final };                               \
-    __attribute__((constructor)) static void define_co_end__definitely_global(void) { \
-        for (int i = 0; i < __skulk_co_final; i++) skulk_expand_universe();           \
-        assert(__co_defcnt == __skulk_co_final && "Must call skulk_component_order() once for each component."); \
-    }; 
+#define skulk_component_order_end() __sco_final, };                      \
+__attribute__((constructor)) static void scoe__definitely_global(void) { \
+    for (int i = 0; i < __sco_final; i++) { skulk_expand_universe(); }   \
+    assert(__co_defcnt == __sco_final && "Must call skulk_component_order() once for each component."); \
+}
 
 
 #endif

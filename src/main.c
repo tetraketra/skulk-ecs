@@ -10,7 +10,7 @@ skulk_component_order(string)
 skulk_component_order(number)
 skulk_component_order_end()
 
-int main() {
+int main(void) {
     printf("%ld\n", _universe.len);
     return 0;
 }
