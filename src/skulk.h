@@ -13,7 +13,7 @@
 /*
     It's just a counter :V.
 */
-typedef int64_t uuid_t;
+typedef uint64_t uuid_t;
 
 /*
     This can be used to cast component arrays to check if there's a value.

@@ -71,25 +71,25 @@ int main(void) {
     skw_debug_dump(swo_number);
     skw_debug_dump(swo_string);
 
-    // // DEFRAGMENTATION
-    // uuid_t id_loop;
-    // special_type_of_number jn_loop = {0};
-    // for (int i = 0; i < 100; i++) {
-    //     id_loop = ske_new_id();
-    //     jn_loop.n = (number){.id = id_loop, .value = 10, .base = 2};
-    //     ske_add(1,
-    //         &jn_loop.n, swo_number
-    //     );
-    // }
-    // for (int i = 5; i < 50; i++) { // removes a large swath
-    //     ske_del_all(i);
-    // }
+    // DEFRAGMENTATION
+    uuid_t id_loop;
+    special_type_of_number jn_loop = {0};
+    for (int i = 0; i < 100; i++) {
+        id_loop = ske_new_id();
+        jn_loop.n = (number){.id = id_loop, .value = 10, .base = 2};
+        ske_add(1,
+            &jn_loop.n, swo_number
+        );
+    }
+    for (int i = 5; i < 50; i++) { // removes a large swath
+        ske_del_all(i);
+    }
 
-    // skw_compress(swo_number);
+    skw_compress(swo_number);
 
-    // // PROOF
-    // printf("\nProof of defragmented world: \n");
-    // skw_debug_dump(swo_number);
+    // PROOF
+    printf("\nProof of defragmented world: \n");
+    skw_debug_dump(swo_number);
 
 
 
