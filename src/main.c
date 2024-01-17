@@ -1,91 +1,102 @@
 #include <stdio.h>
 #include "skulk.h"
 
-// COMPONENT DEFINITION
-skulk_define_component(number, int value; int base;)
-skulk_define_component(string, char* value; int len;)
+skc_define(number, int value; int base;)
+skc_define(string, char* value; int len;)
 
-// WORLD ORDER DEFINITION
-skulk_world_order_start()
-skulk_world_order(number)
-skulk_world_order(string)
-skulk_world_order_end()
+skw_order_start()
+skw_order(number) // swo_number
+skw_order(string) // swo_string
+skw_order_end()
+
+ske_define(named_number, number n; string s;);
+ske_define(special_type_of_number, number n;);
+
 
 int main(void) {
 
     // WORLD INITIALIZATION
-    skulk_world_init(swo_number, sizeof(number), skulk_default_pre_free); 
-    skulk_world_init(swo_string, sizeof(string), skulk_default_pre_free);
-    printf("Total worlds initialized: %ld\n", skulk_universe.len); // should be 2
-    /*
-        Define a custom pre_free per world if you want. 
-        Take spot in memory, convert to specific type, 
-        then free things which would leak on memset(0).
-        The default one does literally nothing.
-    */
+    skw_init(swo_number, sizeof(number), skd_pre_free);
+    skw_init(swo_string, sizeof(string), skd_pre_free);
+    printf("Total worlds initialized: %ld\n", sku.len); // should be 2
 
     // ENTITY INITIALIZATION
-    uuid_t id = skulk_get_entity_id();
-    number ex_n = {.id = id, .value = 10, .base = 2}; 
-    string ex_s = {.id = id, .value = "Hello!\0", .len = 7};
-    skulk_add_entity_component(swo_number, &ex_n, sizeof(number)); // doubles number array size to 2
-    skulk_add_entity_component(swo_string, &ex_s, sizeof(string));
+    uuid_t id = ske_new_id();
+    named_number ex = {
+        .n = {.id = id, .value = 10, .base = 2},
+        .s = {.id = id, .value = "Hello!\0", .len = 7}
+    };
+    ske_add(2,
+        &ex.s, swo_string,
+        &ex.n, swo_number  // doubles number array size to 2
+    );
 
-    uuid_t id2 = skulk_get_entity_id();
-    number ex_n2 = {.id = id2, .value = 10, .base = 2};
-    skulk_add_entity_component(swo_number, &ex_n2, sizeof(number)); // doubles number array size to 4
-    
-    // PROOF OF ENTITY INITIALIZATION
-    number* proof = ((number*)skulk_universe.worlds[swo_number].components);
-    printf("Proof the number entities exist: \n");
-    printf("id=%ld, val=%d\n", proof[0].id, proof[0].value);
-    printf("id=%ld, val=%d\n", proof[1].id, proof[1].value);
-    printf("id=%ld, val=%d, DOESN'T EXIST YET\n", proof[2].id, proof[2].value); 
-    printf("id=%ld, val=%d, DOESN'T EXIST YET\n", proof[3].id, proof[3].value);
-    /*
-        `proof[4]` would trigger `-fsanitize=address` for out-of-bounds, as expected
-    */ 
+    uuid_t id2 = ske_new_id();
+    named_number ex2 = {
+        .n = {.id = id2, .value = 10, .base = 2},
+        .s = {.id = id2, .value = "Hello!\0", .len = 7}
+    };
+    ske_add(2,
+        &ex2.s, swo_string,
+        &ex2.n, swo_number  // doubles number array size to 4
+    );
+
+    uuid_t id3 = ske_new_id();
+    special_type_of_number jn3 = {
+        .n = {.id = id3, .value = 10, .base = 2}
+    };
+    ske_add(1,
+        &jn3.n, swo_number
+    );
+
+    // PROOF
+    printf("\nProof of entity component addition: \n");
+    skw_debug_dump(swo_number);
+    skw_debug_dump(swo_string);
 
     // ENTITY DELETION
+    ske_del_all(1); // v v slow
+    skec_del(3, swo_number);
+
+    // PROOF
+    printf("\nProof of entity component deletion: \n");
+    skw_debug_dump(swo_number);
+    skw_debug_dump(swo_string);
+
+    // WORLD DELETION
+    skw_del_all(swo_number, true);
+
+    // PROOF
+    printf("\nProof of world deletion: \n");
+    skw_debug_dump(swo_number);
+    skw_debug_dump(swo_string);
+
+    // // DEFRAGMENTATION
+    // uuid_t id_loop;
+    // special_type_of_number jn_loop = {0};
+    // for (int i = 0; i < 100; i++) {
+    //     id_loop = ske_new_id();
+    //     jn_loop.n = (number){.id = id_loop, .value = 10, .base = 2};
+    //     ske_add(1,
+    //         &jn_loop.n, swo_number
+    //     );
+    // }
+    // for (int i = 5; i < 50; i++) { // removes a large swath
+    //     ske_del_all(i);
+    // }
+
+    // skw_compress(swo_number);
+
+    // // PROOF
+    // printf("\nProof of defragmented world: \n");
+    // skw_debug_dump(swo_number);
+
+
+
     /* TODO:
-        Unfortunately you can't just always directly free a spot in a component array, 
-        as it might contain pointers to other things. That would be a memory leak. 
-        To avoid this, each world needs a `pre_free()` function
-        - `skulk_del_entity_component(uuid_t id, int world_number, size_t size_of_component)` 
-           to remove a component, given an id to find in the component array. This should
-           call that world's `pre_free` function on that spot, then zero-out the memory,
-           then `world.cnt--`, then update `world.next_space` to that location's index.
-        - `skulk_del_entity(uuid_t id, size_t num_components, int world_numbers[num_components], int component_sizes[num_components])` 
-           to remove an entity entirely. This just calls `skulk_del_entity_component`
-           on each respective component in each respective world. Maybe the user could
-           use a temporary entity struct with variable length for convenience? Not sure.
-           It probably wouldn't be passed into the function though; just a usage thought.
-
-        
+        0. `skw_del_all(int skw_number, bool chain);`
+        1. runtime checks to make sure you don't miss certain entity components?
     */
-
-   // COMPONENT ARRAY DEFRAGMENTATION
-   /* TODO:
-        Right now, component arrays can *only* grow. We need a function which first 
-        defragments (puts all components on the left and free space on the right),
-        then shrinks to the smallest power of 2 that's still big enough for current
-        number of components *plus one* (leaving space for the `next_space` pointer), 
-        then advances the `next_space` pointer to the next free space. This operation
-        might not reduce the size of the array, just defragment it.
-
-        Sorting doesn't even remotely matter here, so just use the two-pointer solution.
-
-        Maybe find some sort of heuristic to automatically trigger this? 
-        Not sure what that would be yet tbh. Maybe track if entity insertion went a
-        certain fraction of the array, then skipped something? Nah that's not
-        consistent enough. Could also trigger on some pattern of deletes? Not sure.
-        Oh wait, there's a `world.cnt` for this ^^;. (?). Maybe defragment whenever
-        the count is below a certain fraction of the array's total size, like 25%
-        or 15% or 10%? Not sure. That should be profiled and determined. Could also
-        determine while the program is running using some fancy algorithm? Not sure.
-
-        - `skulk_world_defragment(int world_number)`
-   */
 
     return 0;
 }
