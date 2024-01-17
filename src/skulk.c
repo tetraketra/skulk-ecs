@@ -9,7 +9,7 @@
 // skd = skulk default
 // ns = next space
 // any place which accepts a uuid_t should use ske_new_id()
-// any palce that asks for skw_number can use skw_of()
+// any place that asks for skw_number can use skw_of()
 
 /* =================== */
 /* ==== INTERNALS ==== */
